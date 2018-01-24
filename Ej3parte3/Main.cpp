@@ -15,6 +15,7 @@ void printLinkInfoLog(GLuint programID);
 void validateProgram(GLuint programID);
 
 bool init();
+bool wireframe = false;
 void display();
 void resize(int, int);
 void idle();
@@ -708,7 +709,7 @@ void display()
 	glUniform3fv(locUniformMaterialDiffuse, 1, &(brass.diffuse.r));
 	glUniform3fv(locUniformMaterialSpecular, 1, &(brass.specular.r));
 	glUniform1f(locUniformMaterialShininess, brass.shininess);
-	//drawPlane();
+	drawPlane();
 
 	glUseProgram(0);
 
@@ -773,6 +774,14 @@ void keyboard(unsigned char key, int x, int y)
 			parallex_iterative = false;
 		else
 			parallex_iterative = true;
+		break;
+
+	case 'w': case 'W':
+		wireframe = !wireframe;
+		if (wireframe)
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		else
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		break;
 	}
 }

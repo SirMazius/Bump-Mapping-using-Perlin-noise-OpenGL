@@ -48,7 +48,9 @@ int doscientos_cicuenta_y_cinco = 255;
 
 out vec4 fFragColor;
 
-const float noise_factor = 2;
+const float noise_factor = 1;
+const float noise_factor2 = 2;
+const float noise_factor3 = 4;
 
 /*
 *
@@ -165,9 +167,20 @@ void main() {
 	else
 		normal = vec3(0,0,1);
 
-	//fFragColor = vec4(ads(normal, normalize(vViewDir), normalize(vLightDir)), 1.);
-	fFragColor = vec4(noise2(vPosition.x*noise_factor,vPosition.y*noise_factor,vPosition.z*noise_factor),
-		noise2(vPosition.x*noise_factor,vPosition.y*noise_factor,vPosition.z*noise_factor),
-		noise2(vPosition.x*noise_factor,vPosition.y*noise_factor,vPosition.z*noise_factor),
-		1);
+	// fFragColor = vec4(ads(normal, normalize(vViewDir), normalize(vLightDir)), 1.);
+
+	/*El blanco y negro*/
+	// fFragColor = vec4(noise2(vPosition.x*noise_factor,vPosition.y*noise_factor,vPosition.z*noise_factor),
+	// 	noise2(vPosition.x*noise_factor,vPosition.y*noise_factor,vPosition.z*noise_factor),
+	// 	noise2(vPosition.x*noise_factor,vPosition.y*noise_factor,vPosition.z*noise_factor),
+	// 	1);
+
+	/*Marmol medio bien*/
+	// float noisu_desune = noise2(vPosition.x*noise_factor,vPosition.y*noise_factor,vPosition.z*noise_factor);
+	// float noisu_desune2 = noise2(vPosition.x*noise_factor2,vPosition.y*noise_factor2,vPosition.z*noise_factor2);
+	// float noisu_desune3 = noise2(vPosition.x*noise_factor3,vPosition.y*noise_factor3,vPosition.z*noise_factor3);
+	// float turbulence = 1.75;
+	// float value = sin(vPosition.x+vPosition.z+vPosition.y+noisu_desune*turbulence+0.5*noisu_desune2*turbulence+0.25*noisu_desune3*turbulence);
+
+	// fFragColor = vec4(value, value, value, 1);
 }
