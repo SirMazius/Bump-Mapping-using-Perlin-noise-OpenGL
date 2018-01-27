@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 
+using namespace std;
 
 int initPlane();
 int initTorus(float outerRadius, float innerRadius, int nsides, int nrings);
@@ -13,6 +14,8 @@ void loadSource(GLuint &shaderID, std::string name);
 void printCompileInfoLog(GLuint shadID);
 void printLinkInfoLog(GLuint programID);
 void validateProgram(GLuint programID);
+
+void load_obj(const char*, std::vector<glm::vec4> &, std::vector<glm::vec3> &, std::vector<GLushort> &);
 
 bool init();
 bool wireframe = false;
@@ -67,14 +70,92 @@ GLuint locUniformMVPM, locUniformMVM, locUniformNM;
 GLuint locUniformLightPos, locUniformLightIntensity;
 GLuint locUniformMaterialAmbient, locUniformMaterialDiffuse, locUniformMaterialSpecular, locUniformMaterialShininess;
 GLuint locUniformNormalMap, locUniformColorMap, locUniformGlossMap, locUniformHeightMap, locUniformUseNormal, locUniformUseColor,
-locUniformUseGloss, locUniformParallexSimple, locUniformParallexIterative, locUniformPerlinMap, locUniformPermutation, locUniformP, locUniformEpsilon;
+locUniformUseGloss, locUniformParallexSimple, locUniformParallexIterative, locUniformPerlinMap, locUniformPermutation, locUniformP, locUniformEpsilon, objVAOHandle,locUniformMM;
 
 GLuint FrameBuffer;
 GLuint TexturePerlin;
 
-int numVertTeapot, numVertSphere, numVertPlane, numVertTorus;
+int numVertTeapot, numVertSphere, numVertPlane, numVertTorus, numVertObj;
 
 GLuint textIds[4];
+
+std::vector<GLfloat> obj_vertices;
+std::vector<GLfloat> obj_normals;
+std::vector<GLushort> obj_elements;
+
+void load_obj(const char* filename, std::vector<GLfloat> &vertices, std::vector<GLfloat> &normals, std::vector<GLushort> &elements) {
+	std::ifstream in(filename, std::ios::in);
+	if (!in) { std::cerr << "Cannot open " << filename << std::endl; std::system("pause"); exit(1); }
+
+	std::string line;
+	while (getline(in, line)) {
+		if (line.substr(0, 2) == "v ") {
+			std::istringstream s(line.substr(2));
+			GLfloat x, y, z; s >> x; s >> y; s >> z;
+			vertices.push_back(x);
+			vertices.push_back(y);
+			vertices.push_back(z);
+		}
+		else if (line.substr(0, 2) == "f ") {
+			std::istringstream s(line.substr(2));
+			GLushort a, b, c;
+			s >> a; s >> b; s >> c;
+			a--; b--; c--;
+			elements.push_back(a); elements.push_back(b); elements.push_back(c);
+		}
+		else if (line[0] == '#') { /* ignoring this line */ }
+		else { /* ignoring this line */ }
+	}
+
+	normals.resize(vertices.size(), 0.0f);
+	for (int i = 0; i < elements.size(); i += 3) {
+		GLushort ia = elements[i];
+		GLushort ib = elements[i + 1];
+		GLushort ic = elements[i + 2];
+		glm::vec3 normal = glm::normalize(glm::cross(
+			glm::vec3(vertices[ib * 3 + 0], vertices[ib * 3 + 1], vertices[ib * 3 + 2]) - glm::vec3(vertices[ia * 3 + 0], vertices[ia * 3 + 1], vertices[ia * 3 + 2]),
+			glm::vec3(vertices[ic * 3 + 0], vertices[ic * 3 + 1], vertices[ic * 3 + 2]) - glm::vec3(vertices[ia * 3 + 0], vertices[ia * 3 + 1], vertices[ia * 3 + 2])));
+		normals[ia * 3 + 0] = normals[ib * 3 + 0] = normals[ic * 3 + 0] = normal.x;
+		normals[ia * 3 + 1] = normals[ib * 3 + 1] = normals[ic * 3 + 1] = normal.y;
+		normals[ia * 3 + 2] = normals[ib * 3 + 2] = normals[ic * 3 + 2] = normal.z;
+	}
+}
+
+int initObj(std::string file)
+{
+	load_obj(file.c_str(), obj_vertices, obj_normals, obj_elements);
+
+	glGenVertexArrays(1, &objVAOHandle);
+	glBindVertexArray(objVAOHandle);
+
+	unsigned int handle[3];
+	glGenBuffers(3, handle);
+
+	glBindBuffer(GL_ARRAY_BUFFER, handle[0]);
+	glBufferData(GL_ARRAY_BUFFER, obj_vertices.size() * sizeof(GLfloat), obj_vertices.data(), GL_STATIC_DRAW); // Datos de la posición de los vértices
+	GLuint loc1 = glGetAttribLocation(programID, "aPosition");
+	glEnableVertexAttribArray(loc1); // Vertex position
+	glVertexAttribPointer(loc1, 3, GL_FLOAT, GL_FALSE, 0, (GLubyte *)NULL + 0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, handle[1]);
+	glBufferData(GL_ARRAY_BUFFER, obj_normals.size() * sizeof(GLfloat), obj_normals.data(), GL_STATIC_DRAW); // Datos de las normales de los vértices
+	GLuint loc2 = glGetAttribLocation(programID, "aNormal");
+	glEnableVertexAttribArray(loc2); // Vertex normal
+	glVertexAttribPointer(loc2, 3, GL_FLOAT, GL_FALSE, 0, (GLubyte *)NULL + 0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, handle[2]);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, obj_elements.size() * sizeof(GLushort), obj_elements.data(), GL_STATIC_DRAW); // Array de índices
+
+	glBindVertexArray(0);
+
+	return obj_elements.size();
+}
+
+void drawObj() {
+	glBindVertexArray(objVAOHandle);
+	glDrawElements(GL_TRIANGLES, numVertObj, GL_UNSIGNED_SHORT, ((GLubyte *)NULL + (0)));
+	glBindVertexArray(0);
+}
 
 
 // BEGIN: Carga shaders ////////////////////////////////////////////////////////////////////////////////////////////
@@ -449,6 +530,8 @@ bool init()
 
 	programID = glCreateProgram();
 
+	
+
 	GLuint vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
 	loadSource(vertexShaderID, "tema3_parte3.vert");
 	glCompileShader(vertexShaderID);
@@ -468,6 +551,7 @@ bool init()
 	numVertPlane = initPlane(10.0f, 10.0f, 4, 4);
 	numVertTorus = initTorus(0.5f, 0.25f, 40, 40);
 	numVertTeapot = initTeapot(5, glm::mat4(1.0f));
+	numVertObj = initObj("buddha.obj");
 	locUniformMVPM = glGetUniformLocation(programID, "uModelViewProjMatrix");
 	locUniformMVM = glGetUniformLocation(programID, "uModelViewMatrix");
 	locUniformNM = glGetUniformLocation(programID, "uNormalMatrix");
@@ -494,6 +578,7 @@ bool init()
 	locUniformPermutation = glGetUniformLocation(programID, "permutation");
 	locUniformP = glGetUniformLocation(programID, "p");
 	locUniformEpsilon = glGetUniformLocation(programID, "epsilon");
+	locUniformMM = glGetUniformLocation(programID, "uModelMatrix");
 
 	// Inicializa Texturas
 	TGAFILE tgaImage;
@@ -644,6 +729,7 @@ void display()
 	glm::mat4 ModelPlane = glm::translate(glm::scale(glm::mat4(1.0), glm::vec3(1.0f, 1.0f, 1.0f)), glm::vec3(0.0f, 0.0f, 0.0f));
 	glm::mat4 ModelTorus = glm::translate(glm::scale(glm::rotate(glm::mat4(1.0f), -90.0f, glm::vec3(1.0, 0.0, 0.0)), glm::vec3(2.0, 2.0, 2.0)), glm::vec3(0.0f, 0.0f, 0.25f));
 	glm::mat4 ModelTeapot = glm::translate(glm::rotate(glm::scale(glm::mat4(1.0f), vec3(0.25, 0.25, 0.25)), -90.0f, vec3(1.0, 0.0, 0.0)), vec3(0.0f, 0.0f, 0.0f));
+	glm::mat4 ModelObj = glm::translate(glm::rotate(glm::mat4(1.0f), -90.0f, vec3(1.0, 0.0, 0.0)), vec3(-1.0f, 0.0f, 0.0f));
 
 	glm::mat4 mvp; // Model-view-projection matrix
 	glm::mat4 mv;  // Model-view matrix
@@ -682,7 +768,7 @@ void display()
 	glUniform3fv(locUniformMaterialDiffuse, 1, &(emerald.diffuse.r));
 	glUniform3fv(locUniformMaterialSpecular, 1, &(emerald.specular.r));
 	glUniform1f(locUniformMaterialShininess, emerald.shininess);
-	drawTorus();
+	//drawTorus();
 
 	//Dibuja teapot
 	mvp = Projection * View * ModelTeapot;
@@ -712,7 +798,22 @@ void display()
 	glUniform3fv(locUniformMaterialDiffuse, 1, &(brass.diffuse.r));
 	glUniform3fv(locUniformMaterialSpecular, 1, &(brass.specular.r));
 	glUniform1f(locUniformMaterialShininess, brass.shininess);
-	drawPlane();
+	//drawPlane();
+
+	//DIBUJA OBJETO
+	mvp = Projection * View * ModelObj;
+	mv = View * ModelObj;
+	nm = glm::mat3(glm::transpose(glm::inverse(mv)));
+	glUniformMatrix4fv(locUniformMVPM, 1, GL_FALSE, &mvp[0][0]);
+	glUniformMatrix4fv(locUniformMVM, 1, GL_FALSE, &mv[0][0]);
+	glUniformMatrix3fv(locUniformNM, 1, GL_FALSE, &nm[0][0]);
+	//glUniformMatrix4fv(locUniformMM, 1, GL_FALSE, &ModelObj[0][0]);
+	//glUniform1i(locUniformDrawEnvironment, 0);
+	glUniform3fv(locUniformMaterialAmbient, 1, &(bronze.ambient.r));
+	glUniform3fv(locUniformMaterialDiffuse, 1, &(bronze.diffuse.r));
+	glUniform3fv(locUniformMaterialSpecular, 1, &(bronze.specular.r));
+	glUniform1f(locUniformMaterialShininess, bronze.shininess);
+	drawObj();
 
 	glUseProgram(0);
 

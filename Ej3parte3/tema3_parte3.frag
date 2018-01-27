@@ -42,7 +42,7 @@ vec2 Vst = vST;
 
 out vec4 fFragColor;
 
-const float noise_factor = 1;
+const float noise_factor = 50;
 const float noise_factor2 = 4;
 const float noise_factor3 = 8;
 
@@ -151,7 +151,7 @@ float gestiona_ruido(float x, float y, float z) {
 	//  float noise_value3 = noise2(x*noise_factor3, y*noise_factor3, z*noise_factor3);
 	//  float turbulence = 5.75;
 	//  float value = sin(x + z + y + noise_value1*turbulence+0.5*noise_value2*turbulence+0.25*noise_value3*turbulence);
-	 float value = sin(x+y+z+noise2(x*noise_factor*5, y*noise_factor*10, z*noise_factor)*10.75);
+	 float value = sin(noise2(x*noise_factor, y*noise_factor, z*noise_factor));
 	return value;
 }
 

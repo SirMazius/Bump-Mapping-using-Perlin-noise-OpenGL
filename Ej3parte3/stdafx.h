@@ -9,7 +9,9 @@
 
 #include <stdio.h>
 #include <tchar.h>
-
+#include <vector>
+#include <string>
+#include <sstream>
 #include <GL/glew.h>
 #include <GL/glut.h>
 #include <iostream>
@@ -23,6 +25,7 @@
 #include "vbotorus.h"
 #include "tga.h"
 #include "vboteapot.h"
+
 
 
 
