@@ -57,6 +57,7 @@ const int permutation[]{ 151,160,137,91,90,15,
 138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180 };
 
 int p[512];
+int epsilon = 2;
 
 GLubyte MatrixImage[g_Width][g_Height][3];
 
@@ -66,7 +67,7 @@ GLuint locUniformMVPM, locUniformMVM, locUniformNM;
 GLuint locUniformLightPos, locUniformLightIntensity;
 GLuint locUniformMaterialAmbient, locUniformMaterialDiffuse, locUniformMaterialSpecular, locUniformMaterialShininess;
 GLuint locUniformNormalMap, locUniformColorMap, locUniformGlossMap, locUniformHeightMap, locUniformUseNormal, locUniformUseColor,
-locUniformUseGloss, locUniformParallexSimple, locUniformParallexIterative, locUniformPerlinMap, locUniformPermutation, locUniformP;
+locUniformUseGloss, locUniformParallexSimple, locUniformParallexIterative, locUniformPerlinMap, locUniformPermutation, locUniformP, locUniformEpsilon;
 
 GLuint FrameBuffer;
 GLuint TexturePerlin;
@@ -492,6 +493,7 @@ bool init()
 
 	locUniformPermutation = glGetUniformLocation(programID, "permutation");
 	locUniformP = glGetUniformLocation(programID, "p");
+	locUniformEpsilon = glGetUniformLocation(programID, "epsilon");
 
 	// Inicializa Texturas
 	TGAFILE tgaImage;
@@ -616,7 +618,7 @@ void display()
 		glm::vec4 lightPos; // Pos. S.R. del mundo
 		glm::vec3 intensity;
 	};
-	LightInfo light = { glm::vec4(0.0f, 4.0f, 0.0f, 1.0f), // Pos. S.R. del mundo
+	LightInfo light = { glm::vec4(2.0f, 2.0f, 2.0f, 1.0f), // Pos. S.R. del mundo
 		glm::vec3(1.0f, 1.0f, 1.0f)
 	};
 
@@ -654,6 +656,7 @@ void display()
 	glUniform1i(locUniformGlossMap, 2);	// GL_TEXURE2
 	glUniform1i(locUniformHeightMap, 3);	// GL_TEXURE3
 	glUniform1i(locUniformPerlinMap, 4);
+	glUniform1i(locUniformEpsilon, epsilon);
 
 	glUniform1i(locUniformUseNormal, use_normal_map);
 	glUniform1i(locUniformUseColor, use_color);
@@ -679,7 +682,7 @@ void display()
 	glUniform3fv(locUniformMaterialDiffuse, 1, &(emerald.diffuse.r));
 	glUniform3fv(locUniformMaterialSpecular, 1, &(emerald.specular.r));
 	glUniform1f(locUniformMaterialShininess, emerald.shininess);
-	//drawTorus();
+	drawTorus();
 
 	//Dibuja teapot
 	mvp = Projection * View * ModelTeapot;
@@ -696,7 +699,7 @@ void display()
 	glUniform1f(locUniformMaterialShininess, brass.shininess);
 	// Tarea por hacer: paso al shader de las matrices y las propiedades del material (brass)
 	// Dibuja Tetera
-	drawTeapot();
+	//drawTeapot();
 
 	 //Dibuja Plano
 	mvp = Projection * View * ModelPlane;
@@ -783,7 +786,15 @@ void keyboard(unsigned char key, int x, int y)
 		else
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		break;
+	case '6':
+		epsilon += 1;
+		break;
+	case '4':
+		epsilon -= 1;
+		break;
 	}
+
+	
 }
 
 void specialKeyboard(int key, int x, int y)

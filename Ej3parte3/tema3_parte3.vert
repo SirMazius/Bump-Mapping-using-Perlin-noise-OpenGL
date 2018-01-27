@@ -25,6 +25,7 @@ out vec3 vLightDir;
 out vec3 vViewDir;
 out vec2 vST;
 out vec3 vPosition;	
+out vec3 vNormal;
 
 
 void main() {
@@ -49,5 +50,6 @@ void main() {
 	vEcPos = ecPos;
 	vEcNorm = ecNorm;
 	vPosition = aPosition;
+	vNormal = aNormal;
 	gl_Position = uModelViewProjMatrix * vec4(aPosition, 1.0);
 }
