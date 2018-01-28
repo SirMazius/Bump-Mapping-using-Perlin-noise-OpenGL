@@ -703,7 +703,7 @@ void display()
 		glm::vec4 lightPos; // Pos. S.R. del mundo
 		glm::vec3 intensity;
 	};
-	LightInfo light = { glm::vec4(2.0f, 2.0f, 2.0f, 1.0f), // Pos. S.R. del mundo
+	LightInfo light = { glm::vec4(4.0f, 4.0f, 4.0f, 1.0f), // Pos. S.R. del mundo
 		glm::vec3(1.0f, 1.0f, 1.0f)
 	};
 
@@ -727,7 +727,7 @@ void display()
 	glm::mat4 View = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	glm::mat4 ModelPlane = glm::translate(glm::scale(glm::mat4(1.0), glm::vec3(1.0f, 1.0f, 1.0f)), glm::vec3(0.0f, 0.0f, 0.0f));
-	glm::mat4 ModelTorus = glm::translate(glm::scale(glm::rotate(glm::mat4(1.0f), -90.0f, glm::vec3(1.0, 0.0, 0.0)), glm::vec3(2.0, 2.0, 2.0)), glm::vec3(0.0f, 0.0f, 0.25f));
+	glm::mat4 ModelTorus = glm::translate(glm::scale(glm::rotate(glm::mat4(1.0f), -90.0f, glm::vec3(1.0, 0.0, 0.0)), glm::vec3(5.0, 5.0, 5.0)), glm::vec3(0.0f, 0.0f, 0.25f));
 	glm::mat4 ModelTeapot = glm::translate(glm::rotate(glm::scale(glm::mat4(1.0f), vec3(0.25, 0.25, 0.25)), -90.0f, vec3(1.0, 0.0, 0.0)), vec3(0.0f, 0.0f, 0.0f));
 	glm::mat4 ModelObj = glm::translate(glm::rotate(glm::mat4(1.0f), -90.0f, vec3(1.0, 0.0, 0.0)), vec3(-1.0f, 0.0f, 0.0f));
 
@@ -785,7 +785,7 @@ void display()
 	glUniform1f(locUniformMaterialShininess, brass.shininess);
 	// Tarea por hacer: paso al shader de las matrices y las propiedades del material (brass)
 	// Dibuja Tetera
-	//drawTeapot();
+	drawTeapot();
 
 	 //Dibuja Plano
 	mvp = Projection * View * ModelPlane;
