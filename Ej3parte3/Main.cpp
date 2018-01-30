@@ -36,14 +36,18 @@ bool use_color = false;
 bool use_gloss = false;
 bool parallex_simple = false;
 bool parallex_iterative = false;
+bool teapot = true;
+bool torus = false;
+bool buddha = false;
+bool show_noise = false;
 
 float xrot = 0.0f;
 float yrot = 0.0f;
 float xdiff = 0.0f;
 float ydiff = 0.0f;
 
-const int g_Width = 1280;                          // Ancho inicial de la ventana
-const int g_Height = 720;                         // Altura incial de la ventana
+const int g_Width = 1920;                          // Ancho inicial de la ventana
+const int g_Height = 1080;                         // Altura incial de la ventana
 
 const int permutation[]{ 151,160,137,91,90,15,
 131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
@@ -62,7 +66,7 @@ const int permutation[]{ 151,160,137,91,90,15,
 int p[512];
 int epsilon = 2;
 
-GLubyte MatrixImage[g_Width][g_Height][3];
+GLubyte MatrixImage[256][3];
 
 GLuint cubeVAOHandle, sphereVAOHandle, teapotVAOHandle, planeVAOHandle, torusVAOHandle;
 GLuint programID;
@@ -70,7 +74,8 @@ GLuint locUniformMVPM, locUniformMVM, locUniformNM;
 GLuint locUniformLightPos, locUniformLightIntensity;
 GLuint locUniformMaterialAmbient, locUniformMaterialDiffuse, locUniformMaterialSpecular, locUniformMaterialShininess;
 GLuint locUniformNormalMap, locUniformColorMap, locUniformGlossMap, locUniformHeightMap, locUniformUseNormal, locUniformUseColor,
-locUniformUseGloss, locUniformParallexSimple, locUniformParallexIterative, locUniformPerlinMap, locUniformPermutation, locUniformP, locUniformEpsilon, objVAOHandle,locUniformMM;
+locUniformUseGloss, locUniformParallexSimple, locUniformParallexIterative, 
+locUniformPerlinColor, locUniformPermutation, locUniformP, locUniformTeapot, locUniformTorus, locUniformBuddha, locUniformEpsilon, locUniformshowNormal, objVAOHandle,locUniformMM;
 
 GLuint FrameBuffer;
 GLuint TexturePerlin;
@@ -565,126 +570,56 @@ bool init()
 
 	locUniformNormalMap = glGetUniformLocation(programID, "uNormalMap");
 	locUniformColorMap = glGetUniformLocation(programID, "uColorMap");
-	locUniformGlossMap = glGetUniformLocation(programID, "uGlossMap");
-	locUniformHeightMap = glGetUniformLocation(programID, "uHeightMap");
-	locUniformPerlinMap = glGetUniformLocation(programID, "uPerlinMap");
+	locUniformPerlinColor = glGetUniformLocation(programID, "uPerlinColor");
 
 	locUniformUseNormal = glGetUniformLocation(programID, "use_normal");
 	locUniformUseColor = glGetUniformLocation(programID, "use_color");
-	locUniformUseGloss = glGetUniformLocation(programID, "use_gloss");
-	locUniformParallexSimple = glGetUniformLocation(programID, "use_parallex_simple");
-	locUniformParallexIterative = glGetUniformLocation(programID, "use_parallex_interative");
 
 	locUniformPermutation = glGetUniformLocation(programID, "permutation");
 	locUniformP = glGetUniformLocation(programID, "p");
 	locUniformEpsilon = glGetUniformLocation(programID, "epsilon");
+	locUniformTeapot = glGetUniformLocation(programID, "teapot");
+	locUniformTorus = glGetUniformLocation(programID, "torus");
+	locUniformBuddha = glGetUniformLocation(programID, "buddha");
 	locUniformMM = glGetUniformLocation(programID, "uModelMatrix");
+	locUniformshowNormal = glGetUniformLocation(programID, "show_normal_noise");
 
-	// Inicializa Texturas
+
+	// Inicializa la textura de color
 	TGAFILE tgaImage;
 	glGenTextures(5, textIds);
 
-	for (int i = 0; i < g_Width; i++)
-		for (int j = 0; j < g_Height; j++) {
-			
-			MatrixImage[i][j][0] = 50;
-			MatrixImage[i][j][1] = 241;
-			MatrixImage[i][j][2] = 244;
-		}
+	/*
+		Usamos dos bucles para cubrir la parte de las frecuencias bajas con valores mas altos 
+		para enmascarar el ruido
+	*/
+	const int increase = 135;
+	for (int i = 0; i < 75; i++) {
+		MatrixImage[i][0] = i + increase;
+		MatrixImage[i][1] = i * 0.85 + increase;
+		MatrixImage[i][2] = i * 0.5 + increase;
+	}
 
+	for (int i = 75; i < 256; i++) {
+		MatrixImage[i][0] = i;
+		MatrixImage[i][1] = i*0.85;
+		MatrixImage[i][2] = i*0.75;
+	}
+
+
+	//Textura de color 1D 
 	glActiveTexture(GL_TEXTURE4);
-	glBindTexture(GL_TEXTURE_2D, textIds[4]);
-	gluBuild2DMipmaps(GL_TEXTURE_2D,			// texture to specify
+	glBindTexture(GL_TEXTURE_1D, textIds[4]);
+	gluBuild1DMipmaps(GL_TEXTURE_1D,			// texture to specify
 		GL_RGB,				// internal texture storage format
-		g_Height,   // texture width
-		g_Height,	// texture height
+		256,   // texture width
 		GL_RGB,				// pixel format
 		GL_UNSIGNED_BYTE,		// color component format
 		MatrixImage);	// pointer to texture image
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-	// Normal map
-	if (LoadTGAFile("brick_normal.tga", &tgaImage))
-	{
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textIds[0]);
-		gluBuild2DMipmaps(GL_TEXTURE_2D,			// texture to specify
-			GL_RGB,				// internal texture storage format
-			tgaImage.imageWidth,   // texture width
-			tgaImage.imageHeight,	// texture height
-			GL_RGB,				// pixel format
-			GL_UNSIGNED_BYTE,		// color component format
-			tgaImage.imageData);	// pointer to texture image
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	}
-	else
-		std::cout << "Error al carga la textura normal_map.tga" << std::endl;
-
-	// Color map
-	if (LoadTGAFile("brick_color.tga", &tgaImage))
-	{
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, textIds[1]);
-		gluBuild2DMipmaps(GL_TEXTURE_2D,			// texture to specify
-			GL_RGB,				// internal texture storage format
-			tgaImage.imageWidth,   // texture width
-			tgaImage.imageHeight,	// texture height
-			GL_RGB,				// pixel format
-			GL_UNSIGNED_BYTE,		// color component format
-			tgaImage.imageData);	// pointer to texture image
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	}
-	else
-		std::cout << "Error al carga la textura brick_color.tga" << std::endl;
-
-	// Gloss map
-	if (LoadTGAFile("brick_gloss.tga", &tgaImage))
-	{
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, textIds[2]);
-		gluBuild2DMipmaps(GL_TEXTURE_2D,			// texture to specify
-			GL_LUMINANCE,				// internal texture storage format
-			tgaImage.imageWidth,   // texture width
-			tgaImage.imageHeight,	// texture height
-			GL_LUMINANCE,				// pixel format
-			GL_UNSIGNED_BYTE,		// color component format
-			tgaImage.imageData);	// pointer to texture image
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	}
-	else
-		std::cout << "Error al carga la textura brick_gloss.tga" << std::endl;
-
-	// Height map
-	if (LoadTGAFile("brick_height.tga", &tgaImage))
-	{
-		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_2D, textIds[3]);
-		gluBuild2DMipmaps(GL_TEXTURE_2D,			// texture to specify
-			GL_LUMINANCE,				// internal texture storage format
-			tgaImage.imageWidth,   // texture width
-			tgaImage.imageHeight,	// texture height
-			GL_LUMINANCE,				// pixel format
-			GL_UNSIGNED_BYTE,		// color component format
-			tgaImage.imageData);	// pointer to texture image
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	}
-	else
-		std::cout << "Error al carga la textura brick_height.tga" << std::endl;
+	glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 
 	/*
@@ -727,8 +662,8 @@ void display()
 	glm::mat4 View = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	glm::mat4 ModelPlane = glm::translate(glm::scale(glm::mat4(1.0), glm::vec3(1.0f, 1.0f, 1.0f)), glm::vec3(0.0f, 0.0f, 0.0f));
-	glm::mat4 ModelTorus = glm::translate(glm::scale(glm::rotate(glm::mat4(1.0f), -90.0f, glm::vec3(1.0, 0.0, 0.0)), glm::vec3(5.0, 5.0, 5.0)), glm::vec3(0.0f, 0.0f, 0.25f));
-	glm::mat4 ModelTeapot = glm::translate(glm::rotate(glm::scale(glm::mat4(1.0f), vec3(0.25, 0.25, 0.25)), -90.0f, vec3(1.0, 0.0, 0.0)), vec3(0.0f, 0.0f, 0.0f));
+	glm::mat4 ModelTorus = glm::translate(glm::scale(glm::rotate(glm::mat4(1.0f), -90.0f, glm::vec3(1.0, 0.0, 0.0)), glm::vec3(2.0, 2.0, 2.0)), glm::vec3(0.0f, 0.0f, 0.25f));
+	glm::mat4 ModelTeapot = glm::translate(glm::rotate(glm::scale(glm::mat4(1.0f), vec3(0.55, 0.55, 0.55)), -90.0f, vec3(1.0, 0.0, 0.0)), vec3(0.0f, 0.0f, 0.0f));
 	glm::mat4 ModelObj = glm::translate(glm::rotate(glm::mat4(1.0f), -90.0f, vec3(1.0, 0.0, 0.0)), vec3(-1.0f, 0.0f, 0.0f));
 
 	glm::mat4 mvp; // Model-view-projection matrix
@@ -741,17 +676,18 @@ void display()
 	glUniform1i(locUniformColorMap, 1);	// GL_TEXURE1
 	glUniform1i(locUniformGlossMap, 2);	// GL_TEXURE2
 	glUniform1i(locUniformHeightMap, 3);	// GL_TEXURE3
-	glUniform1i(locUniformPerlinMap, 4);
+	glUniform1i(locUniformPerlinColor, 4);
 	glUniform1i(locUniformEpsilon, epsilon);
 
 	glUniform1i(locUniformUseNormal, use_normal_map);
 	glUniform1i(locUniformUseColor, use_color);
-	glUniform1i(locUniformUseGloss, use_gloss);
 	glUniform1i(locUniformParallexSimple, parallex_simple);
 	glUniform1i(locUniformParallexIterative, parallex_iterative);
-	glUniform1iv(locUniformPermutation, 256, permutation);
 	glUniform1iv(locUniformP, 512, p);
-
+	glUniform1i(locUniformTeapot, teapot);
+	glUniform1i(locUniformTorus, torus);
+	glUniform1i(locUniformBuddha, buddha);
+	glUniform1i(locUniformshowNormal, show_noise);
 											// Paso al shader de las propiedades de la luz
 	glm::vec4 lpos = View * light.lightPos;	// Posición del foco en el S.R. vista
 	glUniform4fv(locUniformLightPos, 1, &(lpos.x));
@@ -768,7 +704,8 @@ void display()
 	glUniform3fv(locUniformMaterialDiffuse, 1, &(emerald.diffuse.r));
 	glUniform3fv(locUniformMaterialSpecular, 1, &(emerald.specular.r));
 	glUniform1f(locUniformMaterialShininess, emerald.shininess);
-	//drawTorus();
+	if (torus)
+		drawTorus();
 
 	//Dibuja teapot
 	mvp = Projection * View * ModelTeapot;
@@ -785,7 +722,8 @@ void display()
 	glUniform1f(locUniformMaterialShininess, brass.shininess);
 	// Tarea por hacer: paso al shader de las matrices y las propiedades del material (brass)
 	// Dibuja Tetera
-	drawTeapot();
+	if (teapot)
+		drawTeapot();
 
 	 //Dibuja Plano
 	mvp = Projection * View * ModelPlane;
@@ -813,7 +751,8 @@ void display()
 	glUniform3fv(locUniformMaterialDiffuse, 1, &(bronze.diffuse.r));
 	glUniform3fv(locUniformMaterialSpecular, 1, &(bronze.specular.r));
 	glUniform1f(locUniformMaterialShininess, bronze.shininess);
-	drawObj();
+	if (buddha)
+		drawObj();
 
 	glUseProgram(0);
 
@@ -861,24 +800,7 @@ void keyboard(unsigned char key, int x, int y)
 		else
 			use_color = true;
 		break;
-	case 'g': case 'G':
-		if (use_gloss)
-			use_gloss = false;
-		else
-			use_gloss = true;
-		break;
-	case 'p': case 'P':
-		if (parallex_simple)
-			parallex_simple = false;
-		else
-			parallex_simple = true;
-		break;
-	case 'o': case 'O':
-		if (parallex_iterative)
-			parallex_iterative = false;
-		else
-			parallex_iterative = true;
-		break;
+	
 
 	case 'w': case 'W':
 		wireframe = !wireframe;
@@ -887,12 +809,33 @@ void keyboard(unsigned char key, int x, int y)
 		else
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		break;
+
+	case 's': case 'S':
+		if (show_noise)
+			show_noise = false;
+		else
+			show_noise = true;
+		break;
 	case '6':
 		epsilon += 1;
 		break;
 	case '4':
 		epsilon -= 1;
 		break;
+	case '1':
+		teapot = true;
+		torus = false;
+		buddha = false;	
+		break;
+	case '2':
+		buddha = true;
+		torus = false;
+		teapot = false;
+		break;
+	case '3':
+		torus = true;
+		buddha = false;
+		teapot = false;
 	}
 
 	
@@ -938,26 +881,6 @@ void mouseMotion(int x, int y)
 	}
 }
 
-//float random(glm::vec2 st) {
-//	//return glm::fract(sin(glm::dot(st[0], st[1], glm::vec2(12.9898, 78.233))) * 43758.5453123);
-//	return glm::fract(sin(glm::dot(st, glm::vec2(12.9898, 78.233))) * 43758.5453123);
-//}
-//
-//float noise(int x, int y) {
-//	glm::vec2 Vst(x, y);
-//	glm::vec2 i = glm::floor(Vst);
-//	glm::vec2 f = glm::fract(Vst);
-//
-//	float a = random(i);
-//	float b = random(i + glm::vec2(1.0, 0.0));
-//	float c = random(i + glm::vec2(0.0, 1.0));
-//	float d = random(i + glm::vec2(1.0, 1.0));
-//
-//	/*glm::vec2 u = f * f * (3.0 - 2.0 * f);*/
-//	glm::vec2 u = f * f * glm::vec2(3.0 - 2 * f.x, 3.0 - 2 * f.y);
-//
-//	return glm::mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
-//}
 
 
 
